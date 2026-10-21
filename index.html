@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rutas Óptimas Cusco</title>
+<meta name="description" content="Sistema de Gestión de Rutas Óptimas en Cusco — Programación III, UNSAAC. Voraz, divide y vencerás, programación dinámica y backtracking sobre el mapa real de la ciudad.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230E3B43'/%3E%3Cpath d='M14 46 L26 22 L38 38 L50 18' stroke='%23F2A65A' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='14' cy='46' r='5' fill='%23fff'/%3E%3Ccircle cx='50' cy='18' r='5' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="carga" class="carga">
+  <div class="carga-caja">
+    <div class="marca grande"><span class="logo"></span>Rutas Óptimas <b>Cusco</b></div>
+    <p class="carga-sub">Iniciando el motor Python en el navegador…</p>
+    <div class="barra"><div id="carga-barra"></div></div>
+    <p id="carga-paso" class="carga-paso">Descargando Pyodide</p>
+    <p class="carga-nota">El código del proyecto (algoritmos/, grafo.py, simulacion.py…) se ejecuta tal cual con Python 3 compilado a WebAssembly.</p>
+  </div>
+</div>
+
+<header class="cabecera">
+  <div class="marca"><span class="logo"></span>Rutas Óptimas <b>Cusco</b></div>
+  <div class="cabecera-info">
+    <span>Programación III · UNSAAC</span>
+    <button id="btn-equipo" class="enlace" type="button">Equipo</button>
+  </div>
+</header>
+
+<main class="app">
+  <section class="panel">
+    <nav class="pestanas" id="pestanas" role="tablist">
+      <button role="tab" data-tab="0" class="activa">1 · Pedidos</button>
+      <button role="tab" data-tab="1">2 · Voraz</button>
+      <button role="tab" data-tab="2">3 · Divide y V.</button>
+      <button role="tab" data-tab="3">4 · P. Dinámica</button>
+      <button role="tab" data-tab="4">5 · Backtracking</button>
+      <button role="tab" data-tab="5">6 · Comparación</button>
+      <button role="tab" data-tab="6">7 · En vivo</button>
+    </nav>
+
+    <div class="contenido">
+      <!-- 1. PEDIDOS -->
+      <div class="pane activa" data-pane="0">
+        <div class="tabla-wrap alta"><table id="tb-pedidos" class="tabla seleccionable"></table></div>
+        <fieldset class="grupo">
+          <legend>Nuevo pedido <small>(clic en el mapa para elegir el lugar)</small></legend>
+          <div class="form">
+            <label>Cliente<input id="f-cliente" value="Nuevo cliente"></label>
+            <label class="ancho">Lugar<select id="f-lugar"></select></label>
+            <label>Prioridad<input id="f-prio" type="number" min="1" max="5" value="3"></label>
+            <label>Peso kg<input id="f-peso" type="number" min="1" max="50" value="2"></label>
+            <label>Valor S/.<input id="f-valor" type="number" min="1" max="999" value="30"></label>
+          </div>
+          <div class="botones">
+            <button class="btn primario" id="b-agregar">Agregar</button>
+            <button class="btn" id="b-eliminar">Eliminar seleccionados</button>
+            <button class="btn" id="b-restaurar">Datos de ejemplo</button>
+            <button class="btn" id="b-aleatorios">+10 aleatorios</button>
+          </div>
+        </fieldset>
+        <fieldset class="grupo">
+          <legend>Ordenación</legend>
+          <div class="fila">
+            <select id="f-criterio"></select>
+            <select id="f-alg"></select>
+            <button class="btn primario" id="b-ordenar">Ordenar</button>
+          </div>
+        </fieldset>
+        <fieldset class="grupo">
+          <legend>Búsqueda</legend>
+          <div class="fila">
+            <input id="f-id" value="P007" size="6" aria-label="ID">
+            <button class="btn" id="b-binaria">Búsqueda binaria</button>
+            <select id="f-sector" aria-label="Sector"></select>
+            <button class="btn" id="b-sector">Índice hash</button>
+          </div>
+        </fieldset>
+        <p class="resultado" id="r-pedidos"></p>
+      </div>
+
+      <!-- 2. VORAZ -->
+      <div class="pane" data-pane="1">
+        <p class="intro">Greedy: en cada paso se toma la mejor opción <b>local</b> sin mirar el panorama global.</p>
+        <ul class="intro-lista">
+          <li><b>Asignación:</b> cada pedido (urgentes primero) va al repartidor más cercano con capacidad.</li>
+          <li><b>Ruta:</b> el repartidor siempre visita el punto pendiente más próximo.</li>
+        </ul>
+        <div class="botones">
+          <button class="btn primario" id="b-v-asignar">Asignar pedidos al más cercano</button>
+          <button class="btn" id="b-v-rutas">Rutas (vecino más cercano)</button>
+        </div>
+        <div class="tabla-wrap"><table id="tb-reps" class="tabla"></table></div>
+        <pre class="salida" id="t-voraz">Pulse un botón para ejecutar el enfoque voraz.</pre>
+      </div>
+
+      <!-- 3. DIVIDE Y VENCERÁS -->
+      <div class="pane" data-pane="2">
+        <p class="intro">La ciudad se divide recursivamente por la mediana (alternando cortes verticales y horizontales) hasta tener una zona por repartidor. Cada repartidor resuelve la ruta óptima <b>solo de su zona</b> (Held-Karp) y luego se combinan los resultados.</p>
+        <div class="fila">
+          <label class="en-linea">Zonas (repartidores)<input id="f-zonas" type="number" min="1" max="6" value="3"></label>
+          <button class="btn primario" id="b-dyv">Dividir y resolver</button>
+        </div>
+        <pre class="salida" id="t-dyv">Elija el número de zonas y pulse «Dividir y resolver».</pre>
+      </div>
+
+      <!-- 4. PROGRAMACIÓN DINÁMICA -->
+      <div class="pane" data-pane="3">
+        <p class="intro"><b>Mochila 0/1:</b> elegir qué pedidos cargar para maximizar el valor sin superar la capacidad.<br><b>Held-Karp:</b> ruta óptima para visitar los pedidos cargados, guardando estados (conjunto, último).</p>
+        <div class="fila">
+          <label class="en-linea">Capacidad (kg)<input id="f-cap" type="number" min="1" max="500" value="20"></label>
+          <button class="btn primario" id="b-mochila">1) Cargar vehículo</button>
+          <button class="btn" id="b-hk">2) Ruta óptima</button>
+        </div>
+        <div class="tabla-wrap"><table id="tb-moch" class="tabla"></table></div>
+        <pre class="salida" id="t-pd">Primero cargue el vehículo (mochila 0/1) y luego calcule la ruta óptima.</pre>
+      </div>
+
+      <!-- 5. BACKTRACKING -->
+      <div class="pane" data-pane="4">
+        <p class="intro">Encuentra <b>todas</b> las rutas simples entre dos lugares evitando calles cerradas y elige la más corta. Clic en un lugar: 1º origen, 2º destino. Clic en una calle: cerrarla / abrirla.</p>
+        <div class="form dos">
+          <label>Origen<select id="f-origen"></select></label>
+          <label>Destino<select id="f-destino"></select></label>
+        </div>
+        <div class="botones">
+          <button class="btn" id="b-bt-ej">Cerrar calles de ejemplo</button>
+          <button class="btn" id="b-bt-abrir">Abrir todas</button>
+        </div>
+        <p class="cerradas" id="l-cerradas">Calles cerradas: ninguna</p>
+        <div class="botones">
+          <button class="btn primario" id="b-bt">Buscar todas las rutas</button>
+          <button class="btn" id="b-bt-poda">Solo la mejor (con poda)</button>
+        </div>
+        <p class="resultado" id="r-bt"></p>
+        <div class="tabla-wrap alta"><table id="tb-bt" class="tabla seleccionable"></table></div>
+      </div>
+
+      <!-- 6. COMPARACIÓN -->
+      <div class="pane" data-pane="5">
+        <div class="fila">
+          <button class="btn primario" id="b-comparar">Ejecutar experimentos</button>
+          <span class="nota" id="r-cmp">Tiempos en milisegundos.</span>
+        </div>
+        <h3 class="sub">Ruta con n paradas <small>(promedio de 5 instancias)</small></h3>
+        <div class="tabla-wrap completa"><table id="tb-cmp" class="tabla num"></table></div>
+        <div id="graf-cmp" class="grafico"></div>
+        <h3 class="sub">Mochila 0/1 <small>(capacidad 30 kg)</small></h3>
+        <div class="tabla-wrap completa"><table id="tb-cmp2" class="tabla num"></table></div>
+        <div class="conclusion" id="t-cmp" hidden>
+          <b>Conclusión</b>
+          <ul>
+            <li><b>Voraz:</b> el más rápido (O(n²)), pero su ruta puede ser bastante más larga.</li>
+            <li><b>PD (Held-Karp):</b> siempre óptimo; su tiempo crece como n²·2ⁿ (útil hasta ~15 paradas).</li>
+            <li><b>Backtracking:</b> también óptimo, pero crece como n! y se vuelve el más lento.</li>
+            <li><b>Mochila:</b> el voraz se acerca mucho al óptimo, pero solo la PD lo garantiza.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 7. EN VIVO -->
+      <div class="pane" data-pane="6">
+        <p class="intro">Simulación del reparto en <b>tiempo real</b>. Haga clic en una calle para cerrarla (o reabrirla) mientras circulan: quien la iba a usar recalcula su ruta al instante (Dijkstra) y reordena sus pedidos pendientes (Held-Karp).</p>
+        <div class="fila">
+          <label class="en-linea">Plan inicial<select id="f-plan"></select></label>
+        </div>
+        <div class="botones">
+          <button class="btn primario" id="b-play">▶ Iniciar / seguir</button>
+          <button class="btn" id="b-pausa">⏸ Pausa</button>
+          <button class="btn" id="b-reini">⟲ Reiniciar</button>
+          <button class="btn alerta" id="b-incid">⚠ Incidente aleatorio</button>
+        </div>
+        <div class="fila vel">
+          <label class="en-linea">Velocidad<input id="f-vel" type="range" min="5" max="120" value="30"></label>
+          <span id="l-vel" class="mono">× 30</span>
+          <span id="l-reloj" class="reloj">08:00</span>
+        </div>
+        <div class="tabla-wrap"><table id="tb-sim" class="tabla"></table></div>
+        <h3 class="sub">Eventos <small>(lo más reciente arriba)</small></h3>
+        <pre class="salida eventos" id="t-sim">Pulse ▶ para empezar. Puede cerrar calles antes o durante el reparto.</pre>
+      </div>
+    </div>
+    <div class="estado" id="estado">Listo. Haga clic en un lugar del mapa para usarlo en el formulario.</div>
+  </section>
+
+  <section class="mapa-zona">
+    <div class="mapa-barra">
+      <label>Mapa
+        <select id="f-fondo">
+          <option value="osm">Calles (OpenStreetMap)</option>
+          <option value="claro">Claro (Esri)</option>
+          <option value="sat">Satélite (Esri)</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="f-nombres"> Nombres</label>
+      <label class="check"><input type="checkbox" id="f-reales"> Distancias reales (OSM)</label>
+      <button class="btn chico" id="b-centrar">Centrar</button>
+      <span class="osm-info" id="l-osm"></span>
+    </div>
+    <div id="mapa"></div>
+    <div class="mapa-titulo" id="mapa-titulo" hidden></div>
+    <div class="leyenda" id="leyenda"></div>
+  </section>
+</main>
+
+<dialog id="dlg-equipo" class="dialogo">
+  <h2>Sistema de Gestión de Rutas Óptimas en Cusco</h2>
+  <p>Proyecto final del curso <b>Programación III</b> — Ingeniería Informática y de Sistemas, UNSAAC.</p>
+  <h3>Integrantes</h3>
+  <ul>
+    <li>Alfredo Quispe Huamanttupa</li>
+    <li>Elmer Leonel Baca Pauccar</li>
+    <li>Erik Huillca Casa</li>
+    <li>Roberto Carlos Quispe Hermoza</li>
+  </ul>
+  <h3>Cómo funciona esta versión web</h3>
+  <p>Los módulos originales en Python (<code>algoritmos/</code>, <code>grafo.py</code>, <code>simulacion.py</code>, <code>comparacion.py</code>…) se ejecutan sin cambios en el navegador con Pyodide. <code>web.py</code> reemplaza a la interfaz Tkinter y entrega los resultados en JSON; Leaflet dibuja el mapa real de OpenStreetMap.</p>
+  <p class="nota">Mapa y calles: © colaboradores de OpenStreetMap (ODbL). Teselas Claro/Satélite: © Esri.</p>
+  <form method="dialog"><button class="btn primario">Cerrar</button></form>
+</dialog>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/pyodide/pyodide.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
